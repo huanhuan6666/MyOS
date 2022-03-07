@@ -12,18 +12,24 @@ mov es, ax
 mov ss, ax
 mov sp, 0x7c00
 
-
-; 数据段初始化到屏幕显示区域0xb8000
-mov ax, 0xb800
-mov ds, ax 
-mov byte [0], 'H'
-mov byte [2], 'E'
-mov byte [4], 'L'
-mov byte [6], 'L'
-mov byte [8], 'O'
-mov byte [10], '!'
+mov si, booting
+call print
 
 jmp $ ; 阻塞
+
+print:
+    mov ah, 0x0e
+.next:
+    mov al, [si]
+    cmp al, 0
+    jz .done
+    int 0x10
+    inc si
+    jmp .next
+.done:
+    ret
+booting:
+    db "Booting MyOS...", 10, 13, 0 ;最后三个数字依次代表/n /r /0的ASCII码
 
 ; 当前行$ 开头$$ 也就是说除去末尾的55AA和之前的代码，中间全部填充成0
 times 510 - ($ - $$) db 0
