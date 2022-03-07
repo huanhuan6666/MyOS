@@ -16,10 +16,13 @@ mov si, booting
 call print
 
 mov edi, 0x1000; 读取到内存0x1000的位置
-mov ecx, 0; 起始扇区
-mov bl, 1; 读的扇区数量
+mov ecx, 2; 起始扇区
+mov bl, 4; 读的扇区数量
 call read_disk
 
+cmp word [0x1000], 0x55aa
+jnz error
+jmp 0:0x1002
 xchg bx, bx
 
 jmp $ ; 阻塞
@@ -57,7 +60,7 @@ read_disk:
     out dx, al
 
     xor ecx, ecx; 清空ecx
-    mov bl, cl; 得到读写扇区的数量
+    mov cl, bl; 得到读写扇区的数量
     .read:
         push cx
         call .waits ;等待数据准备完毕
@@ -103,7 +106,12 @@ print:
     ret
 booting:
     db "Booting MyOS...", 10, 13, 0 ;最后三个数字依次代表/n /r /0的ASCII码
-
+error:
+    mov si, .msg
+    call print
+    hlt ;让CPU停止
+    jmp $ ;阻塞
+    .msg: db "Booting Error!!!" , 10, 13, 0
 ; 当前行$ 开头$$ 也就是说除去末尾的55AA和之前的代码，中间全部填充成0
 times 510 - ($ - $$) db 0
 ; 主引导扇区最后固定为55AA

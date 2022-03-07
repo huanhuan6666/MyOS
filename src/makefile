@@ -1,9 +1,10 @@
 %.bin: %.asm
 	nasm $< -o $@
 
-master.img: boot.bin
+master.img: boot.bin loader.bin
 	yes | bximage -hd -mode="flat" -size=16 -q master.img
-	dd if=$< of=$@ bs=512 count=1 conv=notrunc
+	dd if=boot.bin of=master.img bs=512 count=1 conv=notrunc
+	dd if=loader.bin of=master.img bs=512 count=4 seek=2 conv=notrunc
 
 .PHONY: bochs
 bochs:master.img
