@@ -17,6 +17,12 @@ mov sp, 0x7c00
 mov ax, 0xb800
 mov ds, ax 
 mov byte [0], 'H'
+mov byte [2], 'E'
+mov byte [4], 'L'
+mov byte [6], 'L'
+mov byte [8], 'O'
+mov byte [10], '!'
+
 jmp $ ; 阻塞
 
 ; 当前行$ 开头$$ 也就是说除去末尾的55AA和之前的代码，中间全部填充成0
