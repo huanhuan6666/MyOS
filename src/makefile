@@ -1,24 +1,48 @@
-%.bin: %.asm
+BUILD:=../build
+SRC:=.
+ENTRYPOINT:=0X10000
+
+$(BUILD)/boot/%.bin: $(SRC)/boot/%.asm
+	$(shell mkdir -p $(dir $@))
 	nasm $< -o $@
 
-master.img: boot.bin loader.bin
-	yes | bximage -hd -mode="flat" -size=16 -q master.img
-	dd if=boot.bin of=master.img bs=512 count=1 conv=notrunc
-	dd if=loader.bin of=master.img bs=512 count=4 seek=2 conv=notrunc
+$(BUILD)/kernel/%.o: $(SRC)/kernel/%.asm
+	$(shell mkdir -p $(dir $@))
+	nasm -f elf32 $< -o $@
+
+$(BUILD)/kernel.bin: $(BUILD)/kernel/start.o
+	$(shell mkdir -p $(dir $@))
+	ld -m elf_i386 -static $^ -o $@ -Ttext $(ENTRYPOINT)
+
+$(BUILD)/system.bin: $(BUILD)/kernel.bin
+	objcopy -O binary $< $@
+
+$(BUILD)/system.map: $(BUILD)/kernel.bin
+	nm $< | sort > $@
+
+$(BUILD)/master.img: $(BUILD)/boot/boot.bin $(BUILD)/boot/loader.bin $(BUILD)/system.bin $(BUILD)/system.map
+	
+	yes | bximage -hd -mode="flat" -size=16 -q $@
+	dd if=$(BUILD)/boot/boot.bin of=$@ bs=512 count=1 conv=notrunc
+	dd if=$(BUILD)/boot/loader.bin of=$@ bs=512 count=4 seek=2 conv=notrunc
+	dd if=$(BUILD)/system.bin of=$@ bs=512 count=200 seek=10 conv=notrunc
+
 
 .PHONY: bochs
-bochs:master.img
+bochs:$(BUILD)/master.img
 	bochs -q
 
 .PHONY: usb
-usb: boot.bin /dev/sdb
+usb: $(BUILD)/boot/boot.bin /dev/sdb
 	sudo dd if=/dev/sdb of=tmp.bin bs=512 count=1 conv=notrunc
 	cp tmp.bin usb.bin
 	sudo rm tmp.bin
-	dd if=boot.bin of=usb.bin bs=446 count=1 conv=notrunc
+	dd if=$(BUILD)/boot/boot.bin of=usb.bin bs=446 count=1 conv=notrunc
 	sudo dd if=usb.bin of=/dev/sdb bs=512 count=1 conv=notrunc
 	rm usb.bin
+
+test: $(BUILD)/master.img
 .PHONY:clean
 clean:
-	rm -rf master.img
+	rm -rf $(BUILD)
 	rm -rf *.bin%      
